@@ -1,0 +1,65 @@
+#!/usr/bin/perl
+
+use strict;
+
+my @page_files = ();
+
+for my $file (@ARGV) {
+	my $q = $file;
+	$q =~ s/'/'"'"'/g;
+
+	open(IN, "pdfimages -list '$q' |");
+	while (<IN>) {
+		if (/^ *[0-9]/) {
+			push @page_files, $file;
+		}
+	}
+	close(IN);
+}
+
+my $n = $#page_files + 1;
+if ($n % 2 != 0) {
+	die "Odd number of pages ($n)";
+}
+
+if ($page_files[$n / 2] eq $page_files[$n / 2 - 1]) {
+	die "Same file ($page_files[$n / 2]) at halfway point";
+}
+
+mkdir "/tmp/$$";
+
+my $seq = 0;
+for my $file (@ARGV) {
+	print STDERR "Extracting images: $file to /tmp/$$\n";
+	my $q = $file;
+	$q =~ s/'/'"'"'/g;
+
+	my $pad = sprintf("%04d", $seq++);
+	system "pdfimages -j '$q' /tmp/$$/im-$pad";
+}
+
+my @tmps = sort(</tmp/$$/im-*>);
+
+if ($#tmps != $#page_files) {
+	die "Got $#tmps images in /tmp/$$ instead of expected $#page_files";
+}
+
+my $list = "";
+
+# XXX figure out PNG resolution
+
+for (my $i = 0; $i < $n / 2; $i++) {
+	$list .= "$tmps[$i] $tmps[$n - 1 - $i] ";
+}
+
+my $q = "$ARGV[0].duplex.pdf";
+print STDERR "Writing $q\n";
+$q =~ s/'/'"'"'/g;
+
+system "img2pdf -o '$q' $list";
+
+for my $t (@tmps) {
+	unlink $t || die "unlink $t";
+}
+
+rmdir "/tmp/$$" || die "rmdir /tmp/$$";
