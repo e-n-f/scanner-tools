@@ -52,6 +52,7 @@ for (my $i = 0; $i < $n / 2; $i++) {
 	$list .= "$tmps[$i] $tmps[$n - 1 - $i] ";
 }
 
+$ARGV[0] =~ s/\.pdf$//;
 my $q = "$ARGV[0].duplex.pdf";
 print STDERR "Writing $q\n";
 $q =~ s/'/'"'"'/g;
