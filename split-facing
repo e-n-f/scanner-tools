@@ -3,6 +3,8 @@
 use strict;
 
 my @page_files = ();
+my $wid = 0;
+my $ht = 0;
 
 for my $file (@ARGV) {
 	my $q = $file;
@@ -12,31 +14,17 @@ for my $file (@ARGV) {
 	while (<IN>) {
 		if (/^ *[0-9]/) {
 			push @page_files, $file;
+
+			s/^ *//;
+			my ($page, $num, $type, $width, $height) = split(/ +/);
+			$wid = $width;
+			$ht = $height;
 		}
 	}
 	close(IN);
 }
 
-for (my $i = 0; $i <= $#page_files; $i++) {
-	my $j;
-	for ($j = $i + 1; $j <= $#page_files; $j++) {
-		if ($page_files[$j] ne $page_files[$i]) {
-			last;
-		}
-	}
-
-	printf("%8d %s\n", $j - $i, $page_files[$i]);
-	$i = $j - 1;
-}
-
 my $n = $#page_files + 1;
-if ($n % 2 != 0) {
-	die "Odd number of pages ($n)";
-}
-
-if ($page_files[$n / 2] eq $page_files[$n / 2 - 1]) {
-	die "Same file ($page_files[$n / 2]) at halfway point";
-}
 
 mkdir "/tmp/$$";
 
@@ -57,22 +45,37 @@ if ($#tmps != $#page_files) {
 }
 
 my $list = "";
+my $list2 = "";
+
+my $halfwid = int($wid / 2);
 
 # XXX figure out PNG resolution
 
-for (my $i = 0; $i < $n / 2; $i++) {
-	$list .= "$tmps[$i] $tmps[$n - 1 - $i] ";
+for (my $i = 0; $i < $n; $i++) {
+	system "convert -quality 50 -crop ${halfwid}x${ht} $tmps[$i] $tmps[$i].out.jpg";
+
+	if ($i == 0) {
+		$list2 .= "$tmps[$i].out-0.jpg ";
+	} else {
+		$list .= "$tmps[$i].out-0.jpg ";
+	}
+
+	$list .= "$tmps[$i].out-1.jpg ";
 }
 
 $ARGV[0] =~ s/\.pdf$//;
-my $q = "$ARGV[0].duplex.pdf";
+my $q = "$ARGV[0].facing.pdf";
 print STDERR "Writing $q\n";
 $q =~ s/'/'"'"'/g;
 
-system "img2pdf -o '$q' $list";
+system "img2pdf -o '$q' $list $list2";
 
 for my $t (@tmps) {
 	unlink $t || die "unlink $t";
+	unlink "$t.out-0.jpg" || die "unlink $t.out-0.jpg";
+	unlink "$t.out-1.jpg" || die "unlink $t.out-1.jpg";
+	unlink "$t.out-2.jpg" || die "unlink $t.out-2.jpg";
+	unlink "$t.out-3.jpg" || die "unlink $t.out-3.jpg";
 }
 
 rmdir "/tmp/$$" || die "rmdir /tmp/$$";
