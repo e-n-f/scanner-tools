@@ -5,6 +5,12 @@ use strict;
 my @page_files = ();
 my $wid = 0;
 my $ht = 0;
+my $left = 0;
+
+if ($ARGV[0] eq "-l") {
+	$left = 1;
+	shift @ARGV;
+}
 
 for my $file (@ARGV) {
 	my $q = $file;
@@ -54,7 +60,7 @@ my $halfwid = int($wid / 2);
 for (my $i = 0; $i < $n; $i++) {
 	system "convert -quality 50 -crop ${halfwid}x${ht} $tmps[$i] $tmps[$i].out.jpg";
 
-	if ($i == 0) {
+	if ($i == 0 && !$left) {
 		$list2 .= "$tmps[$i].out-0.jpg ";
 	} else {
 		$list .= "$tmps[$i].out-0.jpg ";
