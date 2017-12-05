@@ -6,10 +6,20 @@ my @page_files = ();
 my $wid = 0;
 my $ht = 0;
 my $left = 0;
+my $rot = "";
 
-if ($ARGV[0] eq "-l") {
-	$left = 1;
-	shift @ARGV;
+while ($ARGV[0] =~ /^-/) {
+	if ($ARGV[0] eq "-l") {
+		$left = 1;
+		shift @ARGV;
+		next;
+	}
+	if ($ARGV[0] eq "-r") {
+		$rot = "-rotate -90";
+		shift @ARGV;
+		next;
+	}
+	die "Unexpected $ARGV[0]";
 }
 
 for my $file (@ARGV) {
@@ -54,11 +64,17 @@ my $list = "";
 my $list2 = "";
 
 my $halfwid = int($wid / 2);
+my $h = $ht;
+if ($rot ne "") {
+	$halfwid = int($ht / 2);
+	$h = $wid;
+}
+
 
 # XXX figure out PNG resolution
 
 for (my $i = 0; $i < $n; $i++) {
-	system "convert -quality 50 -crop ${halfwid}x${ht} $tmps[$i] $tmps[$i].out.jpg";
+	system "convert $rot -quality 50 -crop ${halfwid}x${h} $tmps[$i] $tmps[$i].out.jpg";
 
 	if ($i == 0 && !$left) {
 		$list2 .= "$tmps[$i].out-0.jpg ";
