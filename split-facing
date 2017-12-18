@@ -74,6 +74,9 @@ if ($rot ne "") {
 # XXX figure out PNG resolution
 
 for (my $i = 0; $i < $n; $i++) {
+	$|= 1;
+	print "$i/$n\r";
+
 	system "convert $rot -quality 50 -crop ${halfwid}x${h} $tmps[$i] $tmps[$i].out.jpg";
 
 	if ($i == 0 && !$left) {
