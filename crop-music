@@ -49,9 +49,9 @@ my $list = "";
 
 for (my $i = 0; $i < $n; $i++) {
 	if ($rot) {
-		system "convert -quality 50 -rotate -90 -crop 2800x3650 $tmps[$i] $tmps[$i].out.jpg"
+		system "convert -quality 50 -rotate -90 -crop 2800x3750 $tmps[$i] $tmps[$i].out.jpg"
 	} else {
-		system "convert -quality 50             -crop 2800x3650 $tmps[$i] $tmps[$i].out.jpg"
+		system "convert -quality 50             -crop 2800x3750 $tmps[$i] $tmps[$i].out.jpg"
 	}
 
 	$list .= "$tmps[$i].out-0.jpg ";
