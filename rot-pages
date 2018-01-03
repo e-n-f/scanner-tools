@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+
+use strict;
+
+my $rot = 180;
+if ($ARGV[0] eq "-r") {
+	$rot = $ARGV[1];
+	shift @ARGV;
+	shift @ARGV;
+}
+
+my @page_files = ();
+
+for my $file (@ARGV) {
+	my $q = $file;
+	$q =~ s/'/'"'"'/g;
+
+	open(IN, "pdfimages -list '$q' |");
+	while (<IN>) {
+		if (/^ *[0-9]/) {
+			push @page_files, $file;
+		}
+	}
+	close(IN);
+}
+
+my $n = $#page_files + 1;
+
+mkdir "/tmp/$$";
+
+my $seq = 0;
+for my $file (@ARGV) {
+	print STDERR "Extracting images: $file to /tmp/$$\n";
+	my $q = $file;
+	$q =~ s/'/'"'"'/g;
+
+	my $pad = sprintf("%04d", $seq++);
+	system "pdfimages -j '$q' /tmp/$$/im-$pad";
+}
+
+my @tmps = sort(</tmp/$$/im-*>);
+
+if ($#tmps != $#page_files) {
+	die "Got $#tmps images in /tmp/$$ instead of expected $#page_files";
+}
+
+my $list = "";
+
+# XXX figure out PNG resolution
+
+$| = 1;
+for (my $i = 0; $i < $n; $i++) {
+	print STDERR "$i/$n\r";
+	system "convert -quality 50 -rotate $rot $tmps[$i] $tmps[$i].out.jpg";
+	$list .= "$tmps[$i].out.jpg ";
+}
+
+$ARGV[0] =~ s/\.pdf$//;
+my $q = "$ARGV[0].rot.pdf";
+print STDERR "Writing $q\n";
+$q =~ s/'/'"'"'/g;
+
+system "img2pdf -o '$q' $list";
+
+for my $t (@tmps) {
+	unlink $t || die "unlink $t";
+}
+
+rmdir "/tmp/$$" || die "rmdir /tmp/$$";

@@ -1,0 +1,100 @@
+#!/usr/bin/perl
+
+use strict;
+
+my @page_files = ();
+my $wid = 0;
+my $ht = 0;
+my $rot = "";
+
+while ($ARGV[0] =~ /^-/) {
+	if ($ARGV[0] eq "-r") {
+		$rot = "-rotate -90";
+		shift @ARGV;
+		next;
+	}
+	die "Unexpected $ARGV[0]";
+}
+
+for my $file (@ARGV) {
+	my $q = $file;
+	$q =~ s/'/'"'"'/g;
+
+	open(IN, "pdfimages -list '$q' |");
+	while (<IN>) {
+		if (/^ *[0-9]/) {
+			push @page_files, $file;
+
+			s/^ *//;
+			my ($page, $num, $type, $width, $height) = split(/ +/);
+			$wid = $width;
+			$ht = $height;
+		}
+	}
+	close(IN);
+}
+
+my $n = $#page_files + 1;
+
+mkdir "/tmp/$$";
+
+my $seq = 0;
+for my $file (@ARGV) {
+	print STDERR "Extracting images: $file to /tmp/$$\n";
+	my $q = $file;
+	$q =~ s/'/'"'"'/g;
+
+	my $pad = sprintf("%04d", $seq++);
+	system "pdfimages -j '$q' /tmp/$$/im-$pad";
+}
+
+my @tmps = sort(</tmp/$$/im-*>);
+
+if ($#tmps != $#page_files) {
+	die "Got $#tmps images in /tmp/$$ instead of expected $#page_files";
+}
+
+my $list = "";
+my $list2 = "";
+
+my $halfwid = int($wid / 2);
+my $h = $ht;
+if ($rot ne "") {
+	$halfwid = int($ht / 2);
+	$h = $wid;
+}
+
+
+# XXX figure out PNG resolution
+
+for (my $i = 0; $i < $n; $i++) {
+	$|= 1;
+	print "$i/$n\r";
+
+	system "convert $rot -quality 50 -crop ${halfwid}x${h} $tmps[$i] $tmps[$i].out.jpg";
+
+	if ($i % 2 == 0) {
+		$list .= "$tmps[$i].out-1.jpg ";
+		$list2 = "$tmps[$i].out-0.jpg $list2";
+	} else {
+		$list .= "$tmps[$i].out-0.jpg ";
+		$list2 = "$tmps[$i].out-1.jpg $list2";
+	}
+}
+
+$ARGV[0] =~ s/\.pdf$//;
+my $q = "$ARGV[0].facing.pdf";
+print STDERR "Writing $q\n";
+$q =~ s/'/'"'"'/g;
+
+system "img2pdf -o '$q' $list $list2";
+
+for my $t (@tmps) {
+	unlink $t || die "unlink $t";
+	unlink "$t.out-0.jpg" || die "unlink $t.out-0.jpg";
+	unlink "$t.out-1.jpg" || die "unlink $t.out-1.jpg";
+	unlink "$t.out-2.jpg" || die "unlink $t.out-2.jpg";
+	unlink "$t.out-3.jpg" || die "unlink $t.out-3.jpg";
+}
+
+rmdir "/tmp/$$" || die "rmdir /tmp/$$";
